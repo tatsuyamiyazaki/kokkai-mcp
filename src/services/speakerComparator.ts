@@ -10,7 +10,11 @@ const POSITION_LABELS = ['推進', '慎重', '規制強化', '中立', '説明�
 
 /** LLM JSON レスポンスをパースする */
 function parseJsonResponse(text: string): Record<string, unknown> {
-  const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) ?? text.match(/(\{[\s\S]*\})/)
+  // 閉じ ``` あり → 閉じ ``` なし（途中切れ）→ 裸の {...}
+  const jsonMatch =
+    text.match(/```json\s*([\s\S]*?)\s*```/) ??
+    text.match(/```json\s*([\s\S]*)/) ??
+    text.match(/(\{[\s\S]*\})/)
   const jsonText = jsonMatch?.[1] ?? text
   try {
     return JSON.parse(jsonText) as Record<string, unknown>
@@ -113,7 +117,7 @@ ${speechListText}
   try {
     const response = await anthropic.messages.create({
       model: config.anthropicModel,
-      max_tokens: 1500,
+      max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     })
 

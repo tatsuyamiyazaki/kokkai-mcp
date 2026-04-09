@@ -7,6 +7,9 @@ import { handleGetMeeting } from './tools/getMeeting.js'
 import { handleSummarizeSpeeches } from './tools/summarizeSpeeches.js'
 import { handleSummarizeMeeting } from './tools/summarizeMeeting.js'
 import { handleCompareOverTime } from './tools/compareOverTime.js'
+import { handleSummarizeQaPairs } from './tools/summarizeQaPairs.js'
+import { handleCompareByParty } from './tools/compareByParty.js'
+import { handleAnalyzeTopicChanges } from './tools/analyzeTopicChanges.js'
 
 
 const server = new McpServer({
@@ -132,6 +135,95 @@ server.tool(
       .describe('各期間で取得する最大発言件数（既定: 20）'),
   },
   (args) => handleCompareOverTime(args),
+)
+
+// --- summarize_qa_pairs ---
+server.tool(
+  'summarize_qa_pairs',
+  '会議録識別子 (issueID) を指定して、質問と答弁のペアを抽出・要約します。各ペアに論点タイトル・質問要旨・答弁要旨・回答関係評価（response_type）が付与されます。',
+  {
+    issueID: z.string().min(1).describe('会議録識別子（search_speeches の items[].issueID から取得）'),
+    focus: z.string().optional().describe('要約の焦点となるテーマ（例: "生成AI"）。省略可'),
+    mode: z
+      .enum(['brief', 'standard', 'detailed'])
+      .default('standard')
+      .describe('出力粒度: brief（3〜5件・短縮）/ standard（5〜10件）/ detailed（詳細・コスト高）'),
+    max_pairs: z
+      .number()
+      .int()
+      .min(1)
+      .max(20)
+      .default(10)
+      .describe('返却する最大ペア数（既定: 10）'),
+    include_unanswered: z
+      .boolean()
+      .default(true)
+      .describe('明確な答弁が取れない質問も含めるか'),
+  },
+  (args) => handleSummarizeQaPairs(args),
+)
+
+// --- compare_by_party ---
+server.tool(
+  'compare_by_party',
+  '指定テーマについて政党別の発言を集約・比較します。各政党のスタンス・主要論点の違い、共通点・相違点を出典付きで返します。',
+  {
+    query: z.string().min(1).describe('比較対象テーマ（例: "生成AI", "財政政策"）'),
+    from: z.string().optional().describe('検索開始日 (YYYY-MM-DD)。省略可'),
+    until: z.string().optional().describe('検索終了日 (YYYY-MM-DD)。省略可'),
+    nameOfMeeting: z.string().optional().describe('特定会議に絞る場合に指定（例: "予算委員会"）'),
+    mode: z
+      .enum(['brief', 'standard', 'detailed'])
+      .default('standard')
+      .describe('出力粒度: brief（主要政党のみ・簡潔）/ standard（標準）/ detailed（詳細・コスト高）'),
+    include_common_points: z.boolean().default(true).describe('共通点を出力に含めるか'),
+    include_differences: z.boolean().default(true).describe('相違点を出力に含めるか'),
+    max_items: z
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(30)
+      .describe('最大対象発言件数（既定: 30）'),
+  },
+  (args) => handleCompareByParty(args),
+)
+
+// --- analyze_topic_changes ---
+server.tool(
+  'analyze_topic_changes',
+  '同一テーマについて複数期間（2〜5期間）の国会議事録を分析し、論点の増加・減少・継続・新規（change_type）を出典付きで返します。',
+  {
+    query: z.string().min(1).describe('比較対象テーマ（例: "生成AI", "財政政策"）'),
+    periods: z
+      .array(
+        z.object({
+          label: z.string().min(1).describe('期間ラベル（例: "2024年"）'),
+          from:  z.string().min(1).describe('開始日 (YYYY-MM-DD)'),
+          until: z.string().min(1).describe('終了日 (YYYY-MM-DD)'),
+        }),
+      )
+      .min(2)
+      .max(5)
+      .describe('比較する期間一覧（2〜5期間）'),
+    mode: z
+      .enum(['brief', 'standard', 'detailed'])
+      .default('standard')
+      .describe('出力粒度: brief（主要変化のみ）/ standard（標準）/ detailed（詳細・コスト高）'),
+    max_items_per_period: z
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .default(20)
+      .describe('各期間で取得する最大発言件数（既定: 20）'),
+    include_emerging_topics: z
+      .boolean()
+      .default(true)
+      .describe('新規論点（new）を含めるか'),
+    nameOfMeeting: z.string().optional().describe('特定会議に絞る場合に指定'),
+  },
+  (args) => handleAnalyzeTopicChanges(args),
 )
 
 // 起動

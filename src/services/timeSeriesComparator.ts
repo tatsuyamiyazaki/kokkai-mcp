@@ -22,7 +22,10 @@ const anthropic = new Anthropic({ apiKey: config.anthropicApiKey })
 
 /** LLM JSON レスポンスをパースする */
 function parseJsonResponse(text: string): Record<string, unknown> {
-  const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) ?? text.match(/(\{[\s\S]*\})/)
+  const jsonMatch =
+    text.match(/```json\s*([\s\S]*?)\s*```/) ??
+    text.match(/```json\s*([\s\S]*)/) ??
+    text.match(/(\{[\s\S]*\})/)
   const jsonText = jsonMatch?.[1] ?? text
   try {
     return JSON.parse(jsonText) as Record<string, unknown>
@@ -101,7 +104,7 @@ ${periodsText}
   try {
     const response = await anthropic.messages.create({
       model: config.anthropicModel,
-      max_tokens: mode === 'brief' ? 800 : mode === 'standard' ? 1500 : 3000,
+      max_tokens: mode === 'brief' ? 1200 : mode === 'standard' ? 2500 : 6000,
       messages: [{ role: 'user', content: prompt }],
     })
 
@@ -263,7 +266,7 @@ ${topicChangesText}
   try {
     const response = await anthropic.messages.create({
       model: config.anthropicModel,
-      max_tokens: mode === 'brief' ? 800 : mode === 'standard' ? 1500 : 2500,
+      max_tokens: mode === 'brief' ? 1200 : mode === 'standard' ? 2500 : 5000,
       messages: [{ role: 'user', content: prompt }],
     })
 
