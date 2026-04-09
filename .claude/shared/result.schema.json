@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "result.schema.json",
+  "title": "AgentResult",
+  "description": ".agent-team/results/{agent}/*.json の成果物スキーマ",
+  "type": "object",
+  "required": [
+    "agent",
+    "task_id",
+    "session_id",
+    "status",
+    "summary",
+    "acceptance_criteria",
+    "created_at"
+  ],
+  "properties": {
+    "agent": {
+      "type": "string",
+      "description": "成果物を出力したエージェント名",
+      "examples": ["architect", "frontend-expert", "reviewer"]
+    },
+    "task_id": {
+      "type": "string",
+      "description": "対応タスクID",
+      "examples": ["TASK-001", "DISPATCH-003"]
+    },
+    "session_id": {
+      "type": "string",
+      "description": "セッション識別子"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["COMPLETED", "FAILED", "PARTIAL"],
+      "description": "タスク実行ステータス"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 50,
+      "description": "実行内容と結果の要約"
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "description": "完了条件の一覧。CEOはこれを全て検証してから完了とみなす",
+      "items": {
+        "type": "object",
+        "required": ["criterion", "verified"],
+        "properties": {
+          "criterion": {
+            "type": "string",
+            "description": "完了条件の説明"
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "検証済みかどうか"
+          },
+          "verification_command": {
+            "type": "string",
+            "description": "検証に使用したコマンド（任意）"
+          },
+          "verification_output": {
+            "type": "string",
+            "description": "コマンド実行結果（任意）"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "output_files": {
+      "type": "array",
+      "description": "生成・更新したファイルのパス一覧",
+      "items": {
+        "type": "string"
+      }
+    },
+    "issues": {
+      "type": "array",
+      "description": "完了時に残存する既知の問題",
+      "items": {
+        "type": "object",
+        "required": ["severity", "description"],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low", "info"]
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "next_agent": {
+      "type": "string",
+      "description": "このエージェントの完了後に続くべき次のエージェント（任意）"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 形式の完了日時"
+    }
+  },
+  "additionalProperties": false
+}

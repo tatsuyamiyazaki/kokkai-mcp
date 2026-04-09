@@ -1,0 +1,75 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(.claude/agents/**)",
+      "Edit(.claude/settings*)",
+      "Edit(.claude/shared/coordination-protocol.md)",
+      "Edit(docs/OPERATION-SEQUENCE.md)",
+      "Edit(.claude/shared/review-findings.schema.json)",
+      "Edit(.claude/shared/result.schema.json)",
+      "Bash(git push origin main*)",
+      "Bash(git push * main*)",
+      "Bash(git push --set-upstream * main*)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(rm -rf *)",
+      "Bash(gh pr merge*)",
+      "Bash(gh release create*)",
+      "Bash(npm publish*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/hook-require-worktree.sh"
+          },
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "pwsh -File .claude/scripts/hook-require-worktree.ps1"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx -y markdownlint-cli --fix \"$CLAUDE_FILE_PATHS\" 1>&2"
+          },
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "pwsh -File .claude/scripts/hook-validate-json.ps1"
+          },
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "pwsh -File .claude/scripts/hook-validate-review-schema.ps1"
+          },
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "pwsh -File .claude/scripts/hook-validate-result-schema.ps1"
+          },
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "pwsh -File .claude/scripts/hook-check-claude-md.ps1"
+          },
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "pwsh -File .claude/scripts/hook-check-review-date.ps1"
+          }
+        ]
+      }
+    ]
+  }
+}

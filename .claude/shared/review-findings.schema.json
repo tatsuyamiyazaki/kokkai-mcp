@@ -1,0 +1,588 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cc-development-agent-team/shared/review-findings.schema.json",
+  "title": "ReviewFindings",
+  "description": "レビューエージェント（reviewer / security-expert / tester / architect-evaluator / design-evaluator）が .agent-team/reviews/ に出力するレビュー結果の共通スキーマ（JSON Schema draft-07）",
+  "type": "object",
+
+  "$defs": {
+
+    "verification": {
+      "title": "Verification",
+      "description": "指摘の再現手順と検証コマンド",
+      "type": "object",
+      "properties": {
+        "repro_steps": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "description": "再現手順（ステップ順）"
+        },
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "description": "修正完了を確認する検証コマンド"
+        },
+        "expected": {
+          "type": "string",
+          "minLength": 1,
+          "description": "期待される検証結果"
+        }
+      },
+      "required": ["repro_steps", "command", "expected"],
+      "additionalProperties": false
+    },
+
+    "baseFinding": {
+      "title": "BaseFinding",
+      "description": "全エージェント共通の指摘要素",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^F-[0-9]+$",
+          "description": "指摘ID（例: F-001）"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low", "info"],
+          "description": "重大度"
+        },
+        "category": {
+          "type": "string",
+          "description": "指摘カテゴリ（例: security, architecture, test-coverage）"
+        },
+        "file": {
+          "type": "string",
+          "description": "対象ファイルパス（任意）"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "対象行番号（任意）"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "問題の説明"
+        },
+        "suggestion": {
+          "type": "string",
+          "description": "修正提案（任意）"
+        }
+      },
+      "required": ["severity", "category", "description"]
+    },
+
+    "reviewerFinding": {
+      "title": "ReviewerFinding",
+      "description": "reviewer (REV) 固有の拡張フィールドを含む指摘要素",
+      "allOf": [
+        { "$ref": "#/$defs/baseFinding" },
+        {
+          "properties": {
+            "rule_reference": {
+              "type": "string",
+              "description": "違反したルールへの参照（例: CLAUDE.md > API Contract > Error Response）"
+            },
+            "verification": {
+              "$ref": "#/$defs/verification"
+            }
+          }
+        }
+      ]
+    },
+
+    "securityFinding": {
+      "title": "SecurityFinding",
+      "description": "security-expert (SEC) 固有の拡張フィールドを含む指摘要素",
+      "allOf": [
+        { "$ref": "#/$defs/baseFinding" },
+        {
+          "properties": {
+            "reference": {
+              "type": "string",
+              "description": "外部参照URL（OWASP Cheat Sheet 等）"
+            },
+            "phase_impact": {
+              "type": "string",
+              "description": "設計レビュー時の実装フェーズへの影響（design_review のみ）"
+            },
+            "verification": {
+              "$ref": "#/$defs/verification"
+            }
+          }
+        }
+      ]
+    },
+
+    "testerFinding": {
+      "title": "TesterFinding",
+      "description": "tester (TEST) 固有の拡張フィールドを含む指摘要素",
+      "allOf": [
+        { "$ref": "#/$defs/baseFinding" },
+        {
+          "properties": {
+            "test_level": {
+              "type": "string",
+              "enum": ["unit", "integration", "e2e"],
+              "description": "テストレベル"
+            },
+            "verification": {
+              "$ref": "#/$defs/verification"
+            }
+          }
+        }
+      ]
+    },
+
+    "evaluatorFinding": {
+      "title": "EvaluatorFinding",
+      "description": "architect-evaluator / design-evaluator 共通の拡張フィールドを含む指摘要素",
+      "allOf": [
+        { "$ref": "#/$defs/baseFinding" },
+        {
+          "properties": {
+            "target": {
+              "type": "string",
+              "description": "指摘対象のドキュメントパスとセクション（例: docs/architecture/non-functional-requirements.md#SLO）"
+            },
+            "verification": {
+              "$ref": "#/$defs/verification"
+            }
+          }
+        }
+      ]
+    },
+
+    "checkSummary": {
+      "title": "CheckSummary",
+      "description": "評価チェック項目の集計（architect-evaluator / design-evaluator で使用）",
+      "type": "object",
+      "properties": {
+        "total":  { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["total", "passed", "failed"],
+      "additionalProperties": false
+    },
+
+    "testResults": {
+      "title": "TestResults",
+      "description": "テストレベル別の実行結果サマリー（tester で使用）",
+      "type": "object",
+      "properties": {
+        "unit": {
+          "type": "object",
+          "properties": {
+            "passed": { "type": "integer", "minimum": 0 },
+            "failed": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["passed", "failed"],
+          "additionalProperties": false
+        },
+        "integration": {
+          "type": "object",
+          "properties": {
+            "passed": { "type": "integer", "minimum": 0 },
+            "failed": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["passed", "failed"],
+          "additionalProperties": false
+        },
+        "e2e": {
+          "type": "object",
+          "properties": {
+            "passed": { "type": "integer", "minimum": 0 },
+            "failed": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["passed", "failed"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "properties": {
+    "agent": {
+      "type": "string",
+      "description": "出力したエージェント名（例: reviewer, architect-evaluator）"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "セッション識別子"
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^TASK-[0-9]+$",
+      "description": "対応タスクID（例: TASK-001）"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["APPROVE", "REJECT", "PASS", "FAIL", "CHANGES_REQUESTED"],
+      "description": "レビュー判定結果"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 100,
+      "description": "判定理由の要約（100文字以上）"
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/baseFinding" },
+      "description": "個別指摘のリスト（0件も許容）"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 形式の作成日時（例: 2026-04-06T10:00:00+09:00）"
+    },
+    "review_type": {
+      "type": "string",
+      "description": "レビュー種別"
+    }
+  },
+  "required": ["agent", "session_id", "task_id", "verdict", "summary", "findings", "created_at"],
+
+  "if": {
+    "properties": { "agent": { "const": "reviewer" } },
+    "required": ["agent"]
+  },
+  "then": {
+    "description": "reviewer (REV) 固有フィールド。コードレビューを担当し APPROVE または CHANGES_REQUESTED を返す。",
+    "properties": {
+      "verdict": {
+        "type": "string",
+        "enum": ["APPROVE", "CHANGES_REQUESTED"]
+      },
+      "review_type": {
+        "type": "string",
+        "enum": ["code_review"]
+      },
+      "approved_files": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "問題なしと判定されたファイルパスのリスト"
+      },
+      "changed_files": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "レビュー対象の変更ファイルパスのリスト"
+      },
+      "findings": {
+        "type": "array",
+        "items": { "$ref": "#/$defs/reviewerFinding" }
+      }
+    },
+    "required": ["review_type"]
+  },
+  "else": {
+    "if": {
+      "properties": { "agent": { "const": "security-expert" } },
+      "required": ["agent"]
+    },
+    "then": {
+      "description": "security-expert (SEC) 固有フィールド。OWASP Top 10 に基づくセキュリティレビューを担当し PASS または FAIL を返す。",
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "enum": ["PASS", "FAIL"]
+        },
+        "review_type": {
+          "type": "string",
+          "enum": ["security_review", "design_review"]
+        },
+        "owasp_categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^OWASP-A[0-9]{2}$"
+          },
+          "description": "今回のレビューで該当する OWASP Top 10 カテゴリの一覧（例: [\"OWASP-A01\", \"OWASP-A02\"]）"
+        },
+        "findings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/securityFinding" }
+        }
+      },
+      "required": ["review_type"]
+    },
+    "else": {
+      "if": {
+        "properties": { "agent": { "const": "tester" } },
+        "required": ["agent"]
+      },
+      "then": {
+        "description": "tester (TEST) 固有フィールド。テスト実行・カバレッジ管理を担当し PASS または FAIL を返す。",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": ["PASS", "FAIL"]
+          },
+          "review_type": {
+            "type": "string",
+            "enum": ["test_review", "test_perspective_review"]
+          },
+          "test_coverage_percent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "ユニットテストのステートメントカバレッジ（%）。閾値は 80% 以上"
+          },
+          "test_results": {
+            "$ref": "#/$defs/testResults"
+          },
+          "findings": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/testerFinding" }
+          }
+        },
+        "required": ["review_type"]
+      },
+      "else": {
+        "if": {
+          "properties": { "agent": { "const": "architect-evaluator" } },
+          "required": ["agent"]
+        },
+        "then": {
+          "description": "architect-evaluator (ARCH-EVAL) 固有フィールド。Gate 1 でアーキテクチャ設計を評価し APPROVE または REJECT を返す。",
+          "properties": {
+            "verdict": {
+              "type": "string",
+              "enum": ["APPROVE", "REJECT"]
+            },
+            "review_type": {
+              "type": "string",
+              "enum": ["architecture_gate_evaluation"]
+            },
+            "gate": {
+              "type": "string",
+              "enum": ["gate1"],
+              "description": "対応するゲート（architect-evaluator は Gate 1 専用）"
+            },
+            "evaluation_round": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "評価ラウンド番号（第N回評価）"
+            },
+            "check_summary": {
+              "$ref": "#/$defs/checkSummary"
+            },
+            "findings": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/evaluatorFinding" }
+            }
+          },
+          "required": ["review_type", "gate"]
+        },
+        "else": {
+          "if": {
+            "properties": { "agent": { "const": "design-evaluator" } },
+            "required": ["agent"]
+          },
+          "then": {
+            "description": "design-evaluator (DESIGN-EVAL) 固有フィールド。Gate 2 で UI/UX・DB・SEC・TEST 設計成果物を評価し APPROVE または REJECT を返す。",
+            "properties": {
+              "verdict": {
+                "type": "string",
+                "enum": ["APPROVE", "REJECT"]
+              },
+              "review_type": {
+                "type": "string",
+                "enum": ["design_gate_evaluation"]
+              },
+              "gate": {
+                "type": "string",
+                "enum": ["gate2"],
+                "description": "対応するゲート（design-evaluator は Gate 2 専用）"
+              },
+              "evaluation_round": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "評価ラウンド番号（第N回評価）"
+              },
+              "check_summary": {
+                "$ref": "#/$defs/checkSummary"
+              },
+              "findings": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/evaluatorFinding" }
+              }
+            },
+            "required": ["review_type", "gate"]
+          }
+        }
+      }
+    }
+  },
+
+  "additionalProperties": true,
+
+  "examples": [
+    {
+      "_comment": "reviewer の例",
+      "agent": "reviewer",
+      "session_id": "sess-abc123",
+      "task_id": "TASK-001",
+      "verdict": "CHANGES_REQUESTED",
+      "review_type": "code_review",
+      "summary": "Must Fix 1件、Should Fix 2件。API規約準拠の修正が必要。バリデーションエラーのレスポンス形式がAPI設計規約（CLAUDE.md > API Contract > Error Response）と異なるため即時対応が必要。",
+      "approved_files": ["backend/src/features/auth/services/auth-service.ts"],
+      "changed_files": [
+        "backend/src/features/auth/controllers/auth-controller.ts",
+        "backend/src/features/auth/services/auth-service.ts"
+      ],
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "category": "api-contract",
+          "file": "backend/src/features/auth/controllers/auth-controller.ts",
+          "line": 15,
+          "description": "バリデーションエラーのレスポンス形式がAPI設計規約と異なる",
+          "suggestion": "docs/architecture/api-design.md のエラーレスポンス形式に準拠してください",
+          "rule_reference": "CLAUDE.md > API Contract > Error Response",
+          "verification": {
+            "repro_steps": [
+              "POST /auth/login に不正な入力を送る",
+              "エラーレスポンスの shape を確認する"
+            ],
+            "command": "npm run test -- auth-controller",
+            "expected": "api-design.md で定義されたエラーフォーマットに一致する"
+          }
+        }
+      ],
+      "created_at": "2026-04-06T10:00:00+09:00"
+    },
+    {
+      "_comment": "security-expert の例",
+      "agent": "security-expert",
+      "session_id": "sess-def456",
+      "task_id": "TASK-001",
+      "verdict": "FAIL",
+      "review_type": "security_review",
+      "summary": "Critical 1件、High 2件。認証周りの修正が必要。パスワードの平文保存が検出され即時修正が必要（OWASP-A02）。また認可チェックの漏れも2件確認された（OWASP-A01）。",
+      "owasp_categories": ["OWASP-A02", "OWASP-A01"],
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "critical",
+          "category": "OWASP-A02",
+          "file": "backend/src/features/auth/services/auth-service.ts",
+          "line": 42,
+          "description": "パスワードを平文で保存している",
+          "suggestion": "bcryptjsを使用してハッシュ化する。ソルトラウンドは12以上",
+          "reference": "https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html",
+          "verification": {
+            "repro_steps": [
+              "ユーザー作成処理を実行する",
+              "保存された password カラムを確認する"
+            ],
+            "command": "npm run test -- auth-service && npm run lint",
+            "expected": "password はハッシュ化され、平文が保存されない"
+          }
+        }
+      ],
+      "created_at": "2026-04-06T10:30:00+09:00"
+    },
+    {
+      "_comment": "tester の例",
+      "agent": "tester",
+      "session_id": "sess-ghi789",
+      "task_id": "TASK-001",
+      "verdict": "FAIL",
+      "review_type": "test_review",
+      "summary": "Unit テスト 3件失敗、カバレッジ 72.5%（閾値 80% 未満）。auth-service のエラーハンドリングテストが未実装のため閾値を下回っている。修正後に再テストが必要。",
+      "test_coverage_percent": 72.5,
+      "test_results": {
+        "unit": { "passed": 45, "failed": 3 },
+        "integration": { "passed": 10, "failed": 0 },
+        "e2e": { "passed": 5, "failed": 0 }
+      },
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "category": "test-coverage",
+          "file": "backend/src/features/auth/services/auth-service.ts",
+          "description": "アカウントロック時のエラーハンドリングのテストが未実装",
+          "suggestion": "auth-service.login.test.ts にロックアウトケースを追加する",
+          "test_level": "unit",
+          "verification": {
+            "repro_steps": [
+              "npm run test -- auth-service を実行する",
+              "カバレッジレポートで auth-service.ts のブランチカバレッジを確認する"
+            ],
+            "command": "npm run test:coverage -- auth-service",
+            "expected": "ブランチカバレッジが 80% 以上になる"
+          }
+        }
+      ],
+      "created_at": "2026-04-06T11:00:00+09:00"
+    },
+    {
+      "_comment": "architect-evaluator の例",
+      "agent": "architect-evaluator",
+      "session_id": "sess-jkl012",
+      "task_id": "TASK-001",
+      "verdict": "REJECT",
+      "review_type": "architecture_gate_evaluation",
+      "gate": "gate1",
+      "evaluation_round": 1,
+      "check_summary": { "total": 15, "passed": 14, "failed": 1 },
+      "summary": "FAIL 1件。数値SLO不足のためREJECT。非機能要件に具体的な数値目標（p95/p99レスポンスタイム等）が未定義のため品質基準を満たさない。修正後に再評価を依頼してください。",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "category": "architecture",
+          "target": "docs/architecture/non-functional-requirements.md#SLO",
+          "description": "非機能要件に数値目標が未定義",
+          "suggestion": "p95/p99 目標値を明記し、測定方法を追記する",
+          "verification": {
+            "repro_steps": [
+              "非機能要件セクションを確認する",
+              "数値SLOの有無を確認する"
+            ],
+            "command": "rg -n \"p95|p99|同時接続|SLO\" docs/architecture/non-functional-requirements.md",
+            "expected": "SLO数値と測定観点が明記されている"
+          }
+        }
+      ],
+      "created_at": "2026-04-06T12:00:00+09:00"
+    },
+    {
+      "_comment": "design-evaluator の例",
+      "agent": "design-evaluator",
+      "session_id": "sess-mno345",
+      "task_id": "TASK-001",
+      "verdict": "REJECT",
+      "review_type": "design_gate_evaluation",
+      "gate": "gate2",
+      "evaluation_round": 1,
+      "check_summary": { "total": 22, "passed": 21, "failed": 1 },
+      "summary": "FAIL 1件。主要導線欠落のためREJECT。パスワードリセット導線がユーザーフローに未定義であり対応するワイヤーフレームも存在しない。修正後に再評価を依頼してください。",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "category": "ux-flow",
+          "target": "docs/design/user-flows.md#password-reset",
+          "description": "パスワードリセット導線が未定義",
+          "suggestion": "メール送信/トークン検証/新パスワード設定/完了までのフローとエラー分岐を追記する",
+          "verification": {
+            "repro_steps": [
+              "user-flows.md を確認する",
+              "パスワードリセット導線と異常系分岐の有無を確認する"
+            ],
+            "command": "rg -n \"パスワードリセット|トークン期限切れ|無効トークン\" docs/design/user-flows.md",
+            "expected": "正常系と異常系の導線が定義されている"
+          }
+        }
+      ],
+      "created_at": "2026-04-06T13:00:00+09:00"
+    }
+  ]
+}
