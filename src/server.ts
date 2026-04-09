@@ -7,6 +7,7 @@ import { handleGetMeeting } from './tools/getMeeting.js'
 import { handleSummarizeSpeeches } from './tools/summarizeSpeeches.js'
 import { handleSummarizeMeeting } from './tools/summarizeMeeting.js'
 
+
 const server = new McpServer({
   name: 'kokkai-mcp',
   version: '0.1.0',

@@ -1,10 +1,35 @@
 import { ConfigurationError } from '../utils/errors.js'
 
+
+import { execSync } from 'child_process'
+
+function readWinUserEnv(name: string): string | undefined {
+  try {
+    const out = execSync(`reg query "HKCU\\Environment" /v ${name}`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+    const m = out.match(/REG_(?:SZ|EXPAND_SZ)\s+(.+)/)
+    return m?.[1]?.trim() ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
+function resolveEnvRef(value: string): string {
+  const match = value.match(/^\$\{(\w+)\}$/)
+  if (match && match[1]) {
+    return process.env[match[1]] ?? readWinUserEnv(match[1]) ?? ''
+  }
+  return value
+}
+
 function getEnv(key: string, required: true): string
 function getEnv(key: string, required: false, defaultValue: string): string
 function getEnv(key: string, required: false, defaultValue?: string): string | undefined
 function getEnv(key: string, required: boolean, defaultValue?: string): string | undefined {
-  const value = process.env[key]
+  const raw = process.env[key]
+  const value = raw !== undefined ? resolveEnvRef(raw) : undefined
   if (value !== undefined && value !== '') {
     return value
   }
@@ -28,7 +53,7 @@ function getEnvInt(key: string, defaultValue: number): number {
 
 export const config = {
   anthropicApiKey: getEnv('ANTHROPIC_API_KEY', true),
-  anthropicModel: getEnv('ANTHROPIC_MODEL', false, 'claude-3-5-haiku-20241022'),
+  anthropicModel: getEnv('ANTHROPIC_MODEL', false, 'claude-haiku-4-5-20251001'),
   kokkaiApiBaseUrl: getEnv('KOKKAI_API_BASE_URL', false, 'https://kokkai.ndl.go.jp/api'),
   requestTimeoutMs: getEnvInt('REQUEST_TIMEOUT_MS', 30000),
   maxRetries: getEnvInt('MAX_RETRIES', 2),
