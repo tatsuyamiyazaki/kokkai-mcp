@@ -6,6 +6,7 @@ import { handleSearchSpeeches } from './tools/searchSpeeches.js'
 import { handleGetMeeting } from './tools/getMeeting.js'
 import { handleSummarizeSpeeches } from './tools/summarizeSpeeches.js'
 import { handleSummarizeMeeting } from './tools/summarizeMeeting.js'
+import { handleCompareOverTime } from './tools/compareOverTime.js'
 
 
 const server = new McpServer({
@@ -89,6 +90,48 @@ server.tool(
       .describe('要約の焦点（例: "生成AI規制"）。省略可'),
   },
   (args) => handleSummarizeMeeting(args),
+)
+
+// --- compare_over_time ---
+server.tool(
+  'compare_over_time',
+  '同一テーマについて複数期間（2〜3期間）の国会議事録を比較し、議論の変化（論点の増減・新規・継続）を返します。',
+  {
+    query: z.string().min(1).describe('比較対象テーマ（例: "生成AI", "財政政策"）'),
+    periods: z
+      .array(
+        z.object({
+          label: z.string().min(1).describe('期間ラベル（例: "2024年"）'),
+          from:  z.string().min(1).describe('開始日 (YYYY-MM-DD)'),
+          until: z.string().min(1).describe('終了日 (YYYY-MM-DD)'),
+        }),
+      )
+      .min(2)
+      .max(3)
+      .describe('比較する期間一覧（2〜3期間）'),
+    nameOfMeeting: z.string().optional().describe('特定会議に絞る場合に指定（例: "予算委員会"）'),
+    speaker: z.string().optional().describe('特定発言者に絞る場合に指定'),
+    mode: z
+      .enum(['brief', 'standard', 'detailed'])
+      .default('standard')
+      .describe('出力粒度: brief（主要変化2〜3件）/ standard（標準）/ detailed（詳細・コスト高）'),
+    include_topics: z
+      .boolean()
+      .default(true)
+      .describe('論点比較を含めるか'),
+    include_speaker_changes: z
+      .boolean()
+      .default(true)
+      .describe('発言者傾向の比較を含めるか'),
+    max_items_per_period: z
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .default(20)
+      .describe('各期間で取得する最大発言件数（既定: 20）'),
+  },
+  (args) => handleCompareOverTime(args),
 )
 
 // 起動
