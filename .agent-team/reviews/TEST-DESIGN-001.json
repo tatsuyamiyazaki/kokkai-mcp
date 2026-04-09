@@ -1,0 +1,27 @@
+{
+  "evaluator": "TEST",
+  "type": "design-review",
+  "dispatch": "DISPATCH-003",
+  "date": "2026-04-09",
+  "verdict": "PASS",
+  "acceptance_criteria_coverage": {
+    "1_keyword_search": "COVERED",
+    "2_issueid_meeting": "COVERED",
+    "3_brief_standard_summary": "COVERED",
+    "4_cache_hit": "COVERED",
+    "5_api_error_handling": "COVERED",
+    "6_mcp_client_callable": "COVERED"
+  },
+  "test_categories": {
+    "unit_pure_functions": ["preprocess.ts", "cache.ts"],
+    "unit_with_mocks": ["kokkaiApi.ts", "summarizer.ts"],
+    "integration": ["tools/searchSpeeches.ts", "tools/getMeeting.ts", "tools/summarizeSpeeches.ts", "tools/summarizeMeeting.ts"],
+    "e2e": ["server.ts MCP stdio startup", "MCP tool invocation"]
+  },
+  "recommended_test_framework": "vitest",
+  "mock_strategy": {
+    "kokkai_api": "vi.mock or MSW",
+    "anthropic_api": "vi.mock('@anthropic-ai/sdk')",
+    "time": "vi.setSystemTime() for TTL tests"
+  }
+}

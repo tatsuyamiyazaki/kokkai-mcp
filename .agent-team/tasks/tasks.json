@@ -1,0 +1,171 @@
+{
+  "project": "kokkai-mcp",
+  "generated": "2026-04-09",
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "プロジェクト初期化（package.json, tsconfig, eslint, prettier）",
+      "assignee": "BE",
+      "priority": "critical",
+      "status": "TODO",
+      "dependencies": [],
+      "worktree": "cc-agent-harness-wt-task-001",
+      "branch": "claude/impl-task-001",
+      "description": "npm init, TypeScript設定, ESLint/Prettier設定, .gitignore, .env.example"
+    },
+    {
+      "id": "TASK-002",
+      "title": "src/config/index.ts — 環境変数一元管理",
+      "assignee": "BE",
+      "priority": "critical",
+      "status": "TODO",
+      "dependencies": ["TASK-001"],
+      "worktree": "cc-agent-harness-wt-task-002",
+      "branch": "claude/impl-task-002",
+      "description": "config オブジェクトの定義。全環境変数とデフォルト値。必須変数未設定時の早期エラー。"
+    },
+    {
+      "id": "TASK-003",
+      "title": "src/types/index.ts — 共有型定義",
+      "assignee": "BE",
+      "priority": "critical",
+      "status": "TODO",
+      "dependencies": ["TASK-001"],
+      "worktree": "cc-agent-harness-wt-task-003",
+      "branch": "claude/impl-task-003",
+      "description": "SpeechItem, SearchResult, MeetingRecord, SummaryResult, SummaryMode"
+    },
+    {
+      "id": "TASK-004",
+      "title": "src/utils/errors.ts — 型付きエラークラス",
+      "assignee": "BE",
+      "priority": "high",
+      "status": "TODO",
+      "dependencies": ["TASK-001"],
+      "worktree": "cc-agent-harness-wt-task-004",
+      "branch": "claude/impl-task-004",
+      "description": "KokkaiApiError, LlmApiError, ValidationError, TooManyItemsError, NotFoundError, ConfigurationError"
+    },
+    {
+      "id": "TASK-005",
+      "title": "src/utils/logger.ts — ログユーティリティ",
+      "assignee": "BE",
+      "priority": "medium",
+      "status": "TODO",
+      "dependencies": ["TASK-001"],
+      "worktree": "cc-agent-harness-wt-task-005",
+      "branch": "claude/impl-task-005",
+      "description": "機微情報除外ログ。stderr への出力。"
+    },
+    {
+      "id": "TASK-006",
+      "title": "src/services/cache.ts — TTL 付きメモリキャッシュ",
+      "assignee": "BE",
+      "priority": "high",
+      "status": "TODO",
+      "dependencies": ["TASK-002", "TASK-003", "TASK-004"],
+      "worktree": "cc-agent-harness-wt-task-006",
+      "branch": "claude/impl-task-006",
+      "description": "node-cache ラッパー。TTL 種別管理。キャッシュキー生成（JSON.stringify + ハッシュ）。"
+    },
+    {
+      "id": "TASK-007",
+      "title": "src/services/kokkaiApi.ts — 国会 API クライアント",
+      "assignee": "BE",
+      "priority": "high",
+      "status": "TODO",
+      "dependencies": ["TASK-002", "TASK-003", "TASK-004", "TASK-006"],
+      "worktree": "cc-agent-harness-wt-task-007",
+      "branch": "claude/impl-task-007",
+      "description": "/speech + /meeting エンドポイント。リトライ制御。タイムアウト。型変換。キャッシュ統合。"
+    },
+    {
+      "id": "TASK-008",
+      "title": "src/services/preprocess.ts — 発言前処理",
+      "assignee": "BE",
+      "priority": "high",
+      "status": "TODO",
+      "dependencies": ["TASK-003"],
+      "worktree": "cc-agent-harness-wt-task-008",
+      "branch": "claude/impl-task-008",
+      "description": "発言除外・結合・重要度スコアリング・チャンク分割。純粋関数として実装。"
+    },
+    {
+      "id": "TASK-009",
+      "title": "src/services/summarizer.ts — LLM 要約",
+      "assignee": "BE",
+      "priority": "high",
+      "status": "TODO",
+      "dependencies": ["TASK-002", "TASK-003", "TASK-004", "TASK-008"],
+      "worktree": "cc-agent-harness-wt-task-009",
+      "branch": "claude/impl-task-009",
+      "description": "チャンク要約 + 最終統合。モード別プロンプト。JSON 出力強制。プロンプトインジェクション対策。"
+    },
+    {
+      "id": "TASK-010",
+      "title": "src/tools/ — 4 ツール実装",
+      "assignee": "BE",
+      "priority": "high",
+      "status": "TODO",
+      "dependencies": ["TASK-007", "TASK-008", "TASK-009"],
+      "worktree": "cc-agent-harness-wt-task-010",
+      "branch": "claude/impl-task-010",
+      "description": "searchSpeeches, getMeeting, summarizeSpeeches, summarizeMeeting の MCP ツール定義・ハンドラ・zod バリデーション"
+    },
+    {
+      "id": "TASK-011",
+      "title": "src/server.ts — MCP サーバーエントリポイント",
+      "assignee": "BE",
+      "priority": "critical",
+      "status": "TODO",
+      "dependencies": ["TASK-010"],
+      "worktree": "cc-agent-harness-wt-task-011",
+      "branch": "claude/impl-task-011",
+      "description": "McpServer 生成・4 ツール登録・stdio transport 起動・プロセス終了ハンドリング"
+    },
+    {
+      "id": "TASK-012",
+      "title": "ユニットテスト — preprocess.ts + cache.ts",
+      "assignee": "TEST",
+      "priority": "high",
+      "status": "TODO",
+      "dependencies": ["TASK-006", "TASK-008"],
+      "worktree": "cc-agent-harness-wt-task-012",
+      "branch": "claude/impl-task-012",
+      "description": "vitest による純粋関数のユニットテスト。境界値テストを含む。"
+    },
+    {
+      "id": "TASK-013",
+      "title": "統合テスト — kokkaiApi.ts + summarizer.ts（モック使用）",
+      "assignee": "TEST",
+      "priority": "high",
+      "status": "TODO",
+      "dependencies": ["TASK-007", "TASK-009"],
+      "worktree": "cc-agent-harness-wt-task-013",
+      "branch": "claude/impl-task-013",
+      "description": "vi.mock による外部 API モック。エラーケース・リトライ・キャッシュ動作。"
+    },
+    {
+      "id": "TASK-014",
+      "title": "統合テスト — MCP ツール（受入条件 1〜6）",
+      "assignee": "TEST",
+      "priority": "high",
+      "status": "TODO",
+      "dependencies": ["TASK-011", "TASK-012", "TASK-013"],
+      "worktree": "cc-agent-harness-wt-task-014",
+      "branch": "claude/impl-task-014",
+      "description": "受入条件 §18 全項目のテスト。エラーレスポンス形式の確認。"
+    },
+    {
+      "id": "TASK-015",
+      "title": "README.md + .env.example 作成",
+      "assignee": "DOC",
+      "priority": "medium",
+      "status": "TODO",
+      "dependencies": ["TASK-011"],
+      "worktree": null,
+      "branch": null,
+      "description": "セットアップ手順・Claude Desktop 設定例・環境変数説明"
+    }
+  ]
+}
