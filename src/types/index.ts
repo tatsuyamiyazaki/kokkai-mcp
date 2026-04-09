@@ -23,12 +23,41 @@ export interface MeetingRecord {
   speeches: SpeechItem[]
 }
 
+/** 出典情報 */
+export interface SourceInfo {
+  speechID: string
+  issueID: string
+  speaker: string
+  date: string
+  nameOfMeeting: string
+  excerpt: string
+}
+
+/** 出典付き論点（main_points の各要素） */
+export interface SourcedPoint {
+  point: string
+  sources: SourceInfo[]
+}
+
+/** 出典付き発言者要点（speaker_points の各要素） */
+export interface SourcedSpeakerPoint {
+  speaker: string
+  point: string
+  sources: SourceInfo[]
+}
+
+/** 出典付き結論 */
+export interface SourcedConclusion {
+  text: string
+  sources: SourceInfo[]
+}
+
 /** 要約結果 */
 export interface SummaryResult {
   overview: string
-  main_points: string[]
-  speaker_points: Record<string, string>
-  conclusion: string
+  main_points: SourcedPoint[]
+  speaker_points: SourcedSpeakerPoint[]
+  conclusion: SourcedConclusion
   caution?: string
   issueID?: string
 }
