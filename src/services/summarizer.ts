@@ -3,14 +3,19 @@ import { config } from '../config/index.js'
 import { LlmApiError, getErrorMessage } from '../utils/errors.js'
 import { logger } from '../utils/logger.js'
 import { preprocessSpeeches, splitIntoChunks } from './preprocess.js'
+import { extractTopics } from './topicExtractor.js'
+import { compareSpeakers } from './speakerComparator.js'
+import { convertToAnalysisResult } from './summaryFormatter.js'
 import type {
   SpeechItem,
   SummaryMode,
   SummaryResult,
+  AnalysisResult,
   SourceInfo,
   SourcedPoint,
   SourcedSpeakerPoint,
   SourcedConclusion,
+  OutputTemplate,
 } from '../types/index.js'
 
 const anthropic = new Anthropic({ apiKey: config.anthropicApiKey })
@@ -316,6 +321,9 @@ export interface SummarizeOptions {
   focus?: string | undefined
   meetingInfo?: string | undefined
   keywords?: string[] | undefined
+  include_topics?: boolean | undefined
+  include_speaker_comparison?: boolean | undefined
+  output_template?: OutputTemplate | undefined
 }
 
 /**
@@ -385,4 +393,67 @@ export async function summarizeSpeeches(
   logger.info('要約完了')
 
   return result
+}
+
+/**
+ * analysis モードで発言群を要約する
+ *
+ * 通常の summarizeSpeeches に加えて、論点抽出・発言者比較を並列実行し
+ * AnalysisResult として返す。
+ *
+ * include_topics / include_speaker_comparison が false の場合は
+ * 対応する LLM 呼び出しをスキップして空配列を返す。
+ */
+export async function summarizeSpeechesAnalysis(
+  items: SpeechItem[],
+  options: SummarizeOptions = {},
+): Promise<AnalysisResult> {
+  const mode = options.mode ?? 'standard'
+  const includeTopic = options.include_topics !== false
+  const includeSpeaker = options.include_speaker_comparison !== false
+
+  logger.info('analysis 要約開始', {
+    mode,
+    itemCount: String(items.length),
+    includeTopic: String(includeTopic),
+    includeSpeaker: String(includeSpeaker),
+  })
+
+  // 前処理（globalIdMap 生成はここで共通化）
+  const keywords = options.keywords ?? (options.focus ? [options.focus] : [])
+  const processed = preprocessSpeeches(items, { keywords })
+
+  if (processed.length === 0) {
+    return {
+      overview: '要約対象の発言が見つかりませんでした。',
+      topics: [],
+      speaker_comparison: [],
+      conclusion: { text: '発言データが不足しているため、結論を抽出できませんでした。', sources: [] },
+      caution: '形式的な発言のみ、または短い発言のみが含まれていた可能性があります。',
+    }
+  }
+
+  const globalItems = processed.slice(0, MAX_SPEECHES_FOR_LLM)
+  const globalIdMap = assignSpeechIds(globalItems)
+
+  // 基本要約 / 論点抽出 / 発言者比較 を並列実行
+  const [baseResult, topics, speakerComparison] = await Promise.all([
+    summarizeSpeeches(items, options),
+    includeTopic
+      ? extractTopics(globalItems, globalIdMap, options.focus)
+      : Promise.resolve([]),
+    includeSpeaker
+      ? compareSpeakers(globalItems, globalIdMap, options.focus)
+      : Promise.resolve([]),
+  ])
+
+  logger.info('analysis 要約完了', {
+    topicsCount: String(topics.length),
+    speakersCount: String(speakerComparison.length),
+  })
+
+  const analysisResult = convertToAnalysisResult(baseResult, topics, speakerComparison)
+
+  // issueID は options 経由で受け取る場合にのみセット（summarizeMeeting が付与）
+  return analysisResult
 }

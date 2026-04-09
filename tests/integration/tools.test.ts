@@ -8,32 +8,90 @@ const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
 // Anthropic SDK をモック化
+// analysis モードでは LLM が複数回呼ばれる:
+//   1回目 (チャンク要約): { summary: "..." }
+//   2回目 (統合要約):    { overview, main_points, speaker_points, conclusion }
+//   3回目 (論点抽出):    { topics: [...] }
+//   4回目 (発言者比較):  { speaker_comparison: [...] }
+// vi.mock のファクトリ内でトップレベル変数を参照できないため、
+// レスポンス文字列はすべてインラインで記述する
 vi.mock('@anthropic-ai/sdk', () => {
-  return {
-    default: vi.fn().mockImplementation(() => ({
-      messages: {
-        create: vi.fn().mockResolvedValue({
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                overview: '生成AIに関する議論が行われた。',
-                main_points: [
-                  { point: '論点1: AI規制の必要性', source_ids: ['S1'] },
-                  { point: '論点2: 活用促進との均衡', source_ids: ['S2'] },
-                ],
-                speaker_points: [
-                  { speaker: '田中大臣', point: '規制は慎重に検討すべき', source_ids: ['S1'] },
-                ],
-                conclusion: {
-                  text: '引き続き審議を継続する方針が示された。',
-                  source_ids: ['S1'],
-                },
-              }),
-            },
+  const createMock = vi.fn()
+    // 1回目: チャンク要約
+    .mockResolvedValueOnce({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({ summary: '生成AIに関する議論の要約。' }),
+      }],
+    })
+    // 2回目: 統合要約
+    .mockResolvedValueOnce({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          overview: '生成AIに関する議論が行われた。',
+          main_points: [
+            { point: '論点1: AI規制の必要性', source_ids: ['S1'] },
+            { point: '論点2: 活用促進との均衡', source_ids: ['S2'] },
+          ],
+          speaker_points: [
+            { speaker: '田中大臣', point: '規制は慎重に検討すべき', source_ids: ['S1'] },
+          ],
+          conclusion: {
+            text: '引き続き審議を継続する方針が示された。',
+            source_ids: ['S1'],
+          },
+        }),
+      }],
+    })
+    // 3回目: 論点抽出
+    .mockResolvedValueOnce({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          topics: [
+            { topic: 'AI規制', summary: '規制の必要性が議論された。', source_ids: ['S1'] },
+            { topic: '活用促進', summary: '産業競争力の観点から活用推進が論じられた。', source_ids: ['S2'] },
           ],
         }),
-      },
+      }],
+    })
+    // 4回目: 発言者比較
+    .mockResolvedValueOnce({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          speaker_comparison: [
+            { speaker: '田中大臣', position: '慎重', point: '規制は慎重に検討すべき', source_ids: ['S1'] },
+            { speaker: '山田委員', position: '推進', point: '活用促進が重要', source_ids: ['S2'] },
+          ],
+        }),
+      }],
+    })
+    // 5回目以降: デフォルト（standard モード等）
+    .mockResolvedValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          overview: '生成AIに関する議論が行われた。',
+          main_points: [
+            { point: '論点1: AI規制の必要性', source_ids: ['S1'] },
+            { point: '論点2: 活用促進との均衡', source_ids: ['S2'] },
+          ],
+          speaker_points: [
+            { speaker: '田中大臣', point: '規制は慎重に検討すべき', source_ids: ['S1'] },
+          ],
+          conclusion: {
+            text: '引き続き審議を継続する方針が示された。',
+            source_ids: ['S1'],
+          },
+        }),
+      }],
+    })
+
+  return {
+    default: vi.fn().mockImplementation(() => ({
+      messages: { create: createMock },
     })),
   }
 })
@@ -129,7 +187,8 @@ describe('受入条件テスト（§18）', () => {
   })
 
   it('AC-3b: standard モードで要約できる（main_points あり・出典付き）', async () => {
-    const result = await handleSummarizeSpeeches({ items: mockSpeeches, mode: 'standard' })
+    // output_template を明示して従来形式（main_points あり）を取得
+    const result = await handleSummarizeSpeeches({ items: mockSpeeches, mode: 'standard', output_template: 'standard' })
     expect(result.isError).toBeFalsy()
     const parsed = JSON.parse(result.content[0]?.text ?? '{}')
     expect(Array.isArray(parsed.main_points)).toBe(true)
@@ -184,7 +243,8 @@ describe('受入条件テスト（§18）', () => {
 
   // 出典付き要約の受入条件
   it('AC-SRC-1: 要約結果に出典情報が付与される', async () => {
-    const result = await handleSummarizeSpeeches({ items: mockSpeeches, mode: 'standard' })
+    // output_template を明示して従来形式（main_points あり）を取得
+    const result = await handleSummarizeSpeeches({ items: mockSpeeches, mode: 'standard', output_template: 'standard' })
     expect(result.isError).toBeFalsy()
     const parsed = JSON.parse(result.content[0]?.text ?? '{}')
 
@@ -299,5 +359,177 @@ describe('受入条件テスト（§18）', () => {
     expect(result).toHaveProperty('content')
     expect(Array.isArray(result.content)).toBe(true)
     expect(result.content[0]).toHaveProperty('type', 'text')
+  })
+})
+
+// ─── rev02 受入条件テスト ─────────────────────────────────────────────────────
+describe('受入条件テスト（rev02: 論点別要約・発言者比較・analysis モード）', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  // AC-ANA-1: analysis モードで output_template="analysis" を指定すると
+  //           topics / speaker_comparison を含む AnalysisResult が返る
+  it('AC-ANA-1: output_template="analysis" で topics と speaker_comparison が返る', async () => {
+    const result = await handleSummarizeSpeeches({
+      items: mockSpeeches,
+      mode: 'standard',
+      output_template: 'analysis',
+      include_topics: true,
+      include_speaker_comparison: true,
+    })
+    expect(result.isError).toBeFalsy()
+    const parsed = JSON.parse(result.content[0]?.text ?? '{}')
+
+    // overview が存在する
+    expect(typeof parsed.overview).toBe('string')
+    expect(parsed.overview.length).toBeGreaterThan(0)
+
+    // topics が配列
+    expect(Array.isArray(parsed.topics)).toBe(true)
+
+    // speaker_comparison が配列
+    expect(Array.isArray(parsed.speaker_comparison)).toBe(true)
+
+    // conclusion が出典付き構造
+    expect(parsed.conclusion).toHaveProperty('text')
+    expect(parsed.conclusion).toHaveProperty('sources')
+  })
+
+  // AC-ANA-2: topics の各要素が topic / summary / sources を持つ
+  it('AC-ANA-2: topics の各要素が topic・summary・sources フィールドを持つ', async () => {
+    const result = await handleSummarizeSpeeches({
+      items: mockSpeeches,
+      mode: 'standard',
+      output_template: 'analysis',
+    })
+    expect(result.isError).toBeFalsy()
+    const parsed = JSON.parse(result.content[0]?.text ?? '{}')
+
+    for (const t of (parsed.topics ?? [])) {
+      expect(t).toHaveProperty('topic')
+      expect(t).toHaveProperty('summary')
+      expect(t).toHaveProperty('sources')
+      expect(Array.isArray(t.sources)).toBe(true)
+    }
+  })
+
+  // AC-ANA-3: speaker_comparison の各要素が speaker / position / point / sources を持つ
+  it('AC-ANA-3: speaker_comparison の各要素が speaker・position・point・sources フィールドを持つ', async () => {
+    const result = await handleSummarizeSpeeches({
+      items: mockSpeeches,
+      mode: 'standard',
+      output_template: 'analysis',
+    })
+    expect(result.isError).toBeFalsy()
+    const parsed = JSON.parse(result.content[0]?.text ?? '{}')
+
+    for (const sc of (parsed.speaker_comparison ?? [])) {
+      expect(sc).toHaveProperty('speaker')
+      expect(sc).toHaveProperty('position')
+      expect(sc).toHaveProperty('point')
+      expect(sc).toHaveProperty('sources')
+      expect(Array.isArray(sc.sources)).toBe(true)
+    }
+  })
+
+  // AC-ANA-4: include_topics=false のときは topics が空配列
+  it('AC-ANA-4: include_topics=false のときは topics が空配列になる', async () => {
+    const result = await handleSummarizeSpeeches({
+      items: mockSpeeches,
+      mode: 'standard',
+      output_template: 'analysis',
+      include_topics: false,
+      include_speaker_comparison: false,
+    })
+    expect(result.isError).toBeFalsy()
+    const parsed = JSON.parse(result.content[0]?.text ?? '{}')
+    expect(Array.isArray(parsed.topics)).toBe(true)
+    expect(parsed.topics).toHaveLength(0)
+  })
+
+  // AC-ANA-5: include_speaker_comparison=false のときは speaker_comparison が空配列
+  it('AC-ANA-5: include_speaker_comparison=false のときは speaker_comparison が空配列になる', async () => {
+    const result = await handleSummarizeSpeeches({
+      items: mockSpeeches,
+      mode: 'standard',
+      output_template: 'analysis',
+      include_topics: false,
+      include_speaker_comparison: false,
+    })
+    expect(result.isError).toBeFalsy()
+    const parsed = JSON.parse(result.content[0]?.text ?? '{}')
+    expect(Array.isArray(parsed.speaker_comparison)).toBe(true)
+    expect(parsed.speaker_comparison).toHaveLength(0)
+  })
+
+  // AC-ANA-6: output_template="standard" で既存形式（main_points / speaker_points）が返る
+  it('AC-ANA-6: output_template="standard" で既存の main_points・speaker_points が返る', async () => {
+    const result = await handleSummarizeSpeeches({
+      items: mockSpeeches,
+      mode: 'standard',
+      output_template: 'standard',
+    })
+    expect(result.isError).toBeFalsy()
+    const parsed = JSON.parse(result.content[0]?.text ?? '{}')
+    expect(Array.isArray(parsed.main_points)).toBe(true)
+    expect(Array.isArray(parsed.speaker_points)).toBe(true)
+    // analysis 固有フィールドは存在しない
+    expect(parsed.topics).toBeUndefined()
+    expect(parsed.speaker_comparison).toBeUndefined()
+  })
+
+  // AC-ANA-7: output_template="brief_report" でも既存形式が返る
+  it('AC-ANA-7: output_template="brief_report" で既存の main_points・speaker_points が返る', async () => {
+    const result = await handleSummarizeSpeeches({
+      items: mockSpeeches,
+      mode: 'brief',
+      output_template: 'brief_report',
+    })
+    expect(result.isError).toBeFalsy()
+    const parsed = JSON.parse(result.content[0]?.text ?? '{}')
+    expect(Array.isArray(parsed.main_points)).toBe(true)
+    expect(parsed.topics).toBeUndefined()
+  })
+
+  // AC-ANA-8: topics の出典数が 1〜3 件以内
+  it('AC-ANA-8: topics の各出典数は 3 件以下', async () => {
+    const result = await handleSummarizeSpeeches({
+      items: mockSpeeches,
+      mode: 'standard',
+      output_template: 'analysis',
+    })
+    expect(result.isError).toBeFalsy()
+    const parsed = JSON.parse(result.content[0]?.text ?? '{}')
+    for (const t of (parsed.topics ?? [])) {
+      expect(t.sources.length).toBeLessThanOrEqual(3)
+    }
+  })
+
+  // AC-ANA-9: speaker_comparison の出典数が 1〜2 件以内
+  it('AC-ANA-9: speaker_comparison の各出典数は 2 件以下', async () => {
+    const result = await handleSummarizeSpeeches({
+      items: mockSpeeches,
+      mode: 'standard',
+      output_template: 'analysis',
+    })
+    expect(result.isError).toBeFalsy()
+    const parsed = JSON.parse(result.content[0]?.text ?? '{}')
+    for (const sc of (parsed.speaker_comparison ?? [])) {
+      expect(sc.sources.length).toBeLessThanOrEqual(2)
+    }
+  })
+
+  // AC-ANA-10: analysis モードのデフォルトが output_template="analysis" になっている
+  it('AC-ANA-10: output_template を省略すると analysis がデフォルトになる', async () => {
+    // output_template を省略 → デフォルト "analysis"
+    const result = await handleSummarizeSpeeches({
+      items: mockSpeeches,
+      mode: 'standard',
+    })
+    expect(result.isError).toBeFalsy()
+    const parsed = JSON.parse(result.content[0]?.text ?? '{}')
+    // analysis 形式なら topics フィールドが存在する
+    expect(Array.isArray(parsed.topics)).toBe(true)
   })
 })

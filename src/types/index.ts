@@ -65,6 +65,41 @@ export interface SummaryResult {
 /** 要約モード */
 export type SummaryMode = 'brief' | 'standard' | 'detailed'
 
+/** 出力テンプレート */
+export type OutputTemplate = 'standard' | 'analysis' | 'brief_report'
+
+/** 論点別要約（analysis モード） */
+export interface TopicSummary {
+  topic: string
+  summary: string
+  sources: SourceInfo[]
+}
+
+/** 発言者比較（analysis モード） */
+export interface SpeakerComparison {
+  speaker: string
+  position: string
+  point: string
+  sources: SourceInfo[]
+}
+
+/** analysis モードの要約結果 */
+export interface AnalysisResult {
+  overview: string
+  topics: TopicSummary[]
+  speaker_comparison: SpeakerComparison[]
+  conclusion: SourcedConclusion
+  caution?: string
+  issueID?: string
+}
+
+/** summarize 共通オプション（rev02 追加パラメータ） */
+export interface SummarizeExtendedOptions {
+  include_topics?: boolean
+  include_speaker_comparison?: boolean
+  output_template?: OutputTemplate
+}
+
 /** 国会 API の speech エンドポイントレスポンス */
 export interface KokkaiSpeechApiResponse {
   numberOfRecords: number
