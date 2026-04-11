@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 import { logger } from './utils/logger.js'
+import { getCacheCleaner } from './services/cacheCleaner.js'
 import { handleSearchSpeeches } from './tools/searchSpeeches.js'
 import { handleGetMeeting } from './tools/getMeeting.js'
 import { handleSummarizeSpeeches } from './tools/summarizeSpeeches.js'
@@ -228,6 +229,9 @@ server.tool(
 
 // 起動
 async function main() {
+  // 起動時キャッシュクリーンアップ（期限切れエントリを削除）
+  getCacheCleaner().runOnStartup()
+
   const transport = new StdioServerTransport()
   await server.connect(transport)
   logger.info('kokkai-mcp サーバー起動完了', { transport: 'stdio' })

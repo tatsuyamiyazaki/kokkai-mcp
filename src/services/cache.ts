@@ -1,57 +1,48 @@
-import NodeCache from 'node-cache'
-import { createHash } from 'crypto'
-import { config } from '../config/index.js'
-import { logger } from '../utils/logger.js'
-
-type CacheTtlType = 'speech' | 'meeting' | 'summary'
-
-const TTL_MAP: Record<CacheTtlType, number> = {
-  speech: config.cache.speechSearchTtlSec,
-  meeting: config.cache.meetingTtlSec,
-  summary: config.cache.summaryTtlSec,
-}
-
-const cache = new NodeCache({
-  stdTTL: config.cache.speechSearchTtlSec,
-  checkperiod: 600, // 10分ごとに期限切れキーを掃除
-  useClones: false,
-})
-
 /**
- * キャッシュキーを生成する
- * オブジェクトは JSON.stringify + SHA-256 の先頭 16 文字でハッシュ化する
+ * cache.ts
+ *
+ * キャッシュサービスのエントリポイント。
+ * 既存のツールコードが `import { buildCacheKey, getCache, setCache, deleteCache } from './cache.js'`
+ * でそのまま動作するよう、cacheGateway へ委譲する形で再エクスポートする。
+ *
+ * 旧実装（node-cache のみ）から、二層キャッシュ（L1: メモリ、L2: SQLite）へ移行済み。
+ * 仕様: docs/Requirement_Rev05.md
  */
-export function buildCacheKey(prefix: string, params: unknown): string {
-  const json = JSON.stringify(params, Object.keys(
-    typeof params === 'object' && params !== null ? params as Record<string, unknown> : {}
-  ).sort())
-  const hash = createHash('sha256').update(json).digest('hex').slice(0, 16)
-  return `${prefix}:${hash}`
-}
 
-/** キャッシュから値を取得する */
-export function getCache<T>(key: string): T | undefined {
-  const value = cache.get<T>(key)
-  if (value !== undefined) {
-    logger.debug('キャッシュ HIT', { key })
-  }
-  return value
-}
+export {
+  buildCacheKey,
+  getCache,
+  setCache,
+  deleteCache,
+} from './cacheGateway.js'
 
-/** キャッシュに値を保存する */
-export function setCache<T>(key: string, value: T, ttlType: CacheTtlType): void {
-  const ttl = TTL_MAP[ttlType]
-  cache.set(key, value, ttl)
-  logger.debug('キャッシュ SET', { key, ttlType, ttlSec: ttl })
-}
+// 新規コードはこちらを使う
+export {
+  cacheGet,
+  cacheSet,
+  cacheDelete,
+  cacheDeleteByType,
+  cacheDeleteAll,
+} from './cacheGateway.js'
 
-/** キャッシュを削除する */
-export function deleteCache(key: string): void {
-  cache.del(key)
-  logger.debug('キャッシュ DELETE', { key })
-}
+export type { GetOptions, SetOptions } from './cacheGateway.js'
 
-/** キャッシュ統計を取得する（デバッグ用） */
-export function getCacheStats(): NodeCache.Stats {
-  return cache.getStats()
-}
+// キービルダー（新規コード用）
+export {
+  buildSearchResultKey,
+  buildMeetingDetailKey,
+  buildSummaryKey,
+  buildQaPairsKey,
+  buildPartyCompareKey,
+  buildTimeCompareKey,
+  buildTopicChangesKey,
+  buildSourceHash,
+  type CacheType,
+} from './cacheKeyBuilder.js'
+
+// ポリシー（version・TTL参照用）
+export {
+  CACHE_VERSIONS,
+  CACHE_TTL_SEC,
+  EMPTY_SEARCH_TTL_SEC,
+} from './cachePolicy.js'

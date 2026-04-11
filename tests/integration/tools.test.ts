@@ -7,6 +7,10 @@ process.env['ANTHROPIC_API_KEY'] = 'test-key'
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
+// テスト間でキャッシュが汚染しないようリセット
+import { resetCacheStore } from '../../src/services/cacheStore.js'
+import { resetMemoryCache } from '../../src/services/memoryCache.js'
+
 // Anthropic SDK をモック化
 // analysis モードでは LLM が複数回呼ばれる:
 //   1回目 (チャンク要約): { summary: "..." }
@@ -132,6 +136,8 @@ const mockSpeeches = [
 describe('受入条件テスト（§18）', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetMemoryCache()
+    resetCacheStore()
   })
 
   // 受入条件 1: キーワード指定で発言検索ができること

@@ -7,6 +7,10 @@ process.env['ANTHROPIC_API_KEY'] = 'test-key'
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
+// テスト間でキャッシュが汚染しないようリセット
+import { resetCacheStore } from '../../src/services/cacheStore.js'
+import { resetMemoryCache } from '../../src/services/memoryCache.js'
+
 // Anthropic SDK をモック化
 // compare_over_time での LLM 呼び出し順:
 //   各期間ごとに summarizeSpeechesAnalysis が呼ばれる（期間 × 複数回）

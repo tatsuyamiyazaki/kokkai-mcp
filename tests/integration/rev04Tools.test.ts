@@ -14,6 +14,10 @@ process.env['ANTHROPIC_API_KEY'] = 'test-key'
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
+// テスト間でキャッシュが汚染しないようリセット
+import { resetCacheStore } from '../../src/services/cacheStore.js'
+import { resetMemoryCache } from '../../src/services/memoryCache.js'
+
 // ─── Anthropic SDK モック ─────────────────────────────────────────────────────
 //
 // 各ツールでの LLM 呼び出し順:
@@ -283,6 +287,8 @@ describe('summarize_qa_pairs 受入条件テスト', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockFetch.mockReset()
+    resetMemoryCache()
+    resetCacheStore()
   })
 
   // AC-QA-1: 質問と答弁がペアとして整理されること
@@ -365,6 +371,8 @@ describe('compare_by_party 受入条件テスト', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockFetch.mockReset()
+    resetMemoryCache()
+    resetCacheStore()
   })
 
   // AC-PARTY-1: 発言が政党別に集約されること
@@ -438,6 +446,8 @@ describe('analyze_topic_changes 受入条件テスト', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockFetch.mockReset()
+    resetMemoryCache()
+    resetCacheStore()
   })
 
   const periods = [

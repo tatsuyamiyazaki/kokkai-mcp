@@ -7,6 +7,10 @@ process.env['ANTHROPIC_API_KEY'] = 'test-key'
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
+// テスト間でキャッシュが汚染しないようリセット
+import { resetCacheStore } from '../../src/services/cacheStore.js'
+import { resetMemoryCache } from '../../src/services/memoryCache.js'
+
 import { searchSpeeches, getMeeting } from '../../src/services/kokkaiApi.js'
 import { KokkaiApiError, NotFoundError } from '../../src/utils/errors.js'
 
@@ -73,6 +77,8 @@ function makeOkResponse(body: unknown) {
 describe('searchSpeeches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetMemoryCache()
+    resetCacheStore()
   })
 
   it('正常レスポンスを SpeechItem[] に変換する', async () => {
@@ -107,6 +113,8 @@ describe('searchSpeeches', () => {
 describe('getMeeting', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetMemoryCache()
+    resetCacheStore()
   })
 
   it('正常レスポンスを MeetingRecord に変換する', async () => {
