@@ -5,3 +5,6 @@ dist/
 coverage/
 .DS_Store
 *.log
+
+# 実行時 SQLite キャッシュ本体（同ディレクトリの sqlite3.exe 等のツールは追跡を継続する）
+.cashe/sqlite/kokkai-cache.db*
