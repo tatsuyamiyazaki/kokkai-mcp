@@ -28,7 +28,6 @@ import {
   isEntryValid,
   parsePayload,
   createEntry,
-  type CacheEntry,
   type ValidateOptions,
 } from './cachePolicy.js'
 import { getCacheStore } from './cacheStore.js'

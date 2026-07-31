@@ -5,7 +5,7 @@
  * CompareOverTimeResult を SummaryMode に応じてフィルタリングして返す。
  */
 
-import type { CompareOverTimeResult, SummaryMode, PeriodSummary, TopicChange, SpeakerChange } from '../types/index.js'
+import type { CompareOverTimeResult, SummaryMode, PeriodSummary, TopicChange } from '../types/index.js'
 
 /**
  * brief モード向けに結果をフィルタリングする。
