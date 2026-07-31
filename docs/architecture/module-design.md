@@ -29,8 +29,8 @@ src/
 
 ### `src/server.ts`
 
-- MCP サーバーインスタンス生成（`@modelcontextprotocol/sdk`）
-- 4 ツールの登録
+- MCP サーバーインスタンス生成（`@modelcontextprotocol/server`）
+- 8 ツールの登録（`registerTool`）
 - stdio transport での起動
 - プロセス終了ハンドリング
 

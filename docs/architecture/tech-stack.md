@@ -11,9 +11,9 @@
 
 | ライブラリ | 用途 | バージョン目安 |
 |-----------|------|-------------|
-| `@modelcontextprotocol/sdk` | MCP サーバー実装 | 最新安定版 |
+| `@modelcontextprotocol/server` | MCP サーバー実装（SDK v2 系） | ^2.x |
 | `@anthropic-ai/sdk` | Anthropic Claude API クライアント | 最新安定版 |
-| `zod` | 入力スキーマバリデーション | ^3.x |
+| `zod` | 入力スキーマバリデーション | ^4.x（SDK v2 が >=4.2 を要求）|
 | `node-cache` | TTL 付きメモリキャッシュ | ^5.x |
 
 ## HTTP クライアント
