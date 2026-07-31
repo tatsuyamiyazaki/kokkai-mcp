@@ -24,12 +24,7 @@
 
 import { logger } from '../utils/logger.js'
 import type { CacheType } from './cacheKeyBuilder.js'
-import {
-  isEntryValid,
-  parsePayload,
-  createEntry,
-  type ValidateOptions,
-} from './cachePolicy.js'
+import { isEntryValid, parsePayload, createEntry, type ValidateOptions } from './cachePolicy.js'
 import { getCacheStore } from './cacheStore.js'
 import { getMemoryCache } from './memoryCache.js'
 import { getCacheCleaner } from './cacheCleaner.js'

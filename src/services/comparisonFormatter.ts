@@ -5,7 +5,12 @@
  * CompareOverTimeResult を SummaryMode に応じてフィルタリングして返す。
  */
 
-import type { CompareOverTimeResult, SummaryMode, PeriodSummary, TopicChange } from '../types/index.js'
+import type {
+  CompareOverTimeResult,
+  SummaryMode,
+  PeriodSummary,
+  TopicChange,
+} from '../types/index.js'
 
 /**
  * brief モード向けに結果をフィルタリングする。
@@ -19,16 +24,16 @@ function applyBriefFilter(result: CompareOverTimeResult): CompareOverTimeResult 
     ...result,
     comparison_summary: {
       ...result.comparison_summary,
-      key_changes:  result.comparison_summary.key_changes.slice(0, 3),
+      key_changes: result.comparison_summary.key_changes.slice(0, 3),
       common_points: result.comparison_summary.common_points.slice(0, 2),
-      new_points:   result.comparison_summary.new_points.slice(0, 2),
+      new_points: result.comparison_summary.new_points.slice(0, 2),
     },
     period_summaries: result.period_summaries.map((ps) => ({
       ...ps,
-      topics: [],    // brief では論点詳細は省略
+      topics: [], // brief では論点詳細は省略
     })),
-    topic_changes:  result.topic_changes.slice(0, 3),
-    speaker_changes: [],   // brief では省略
+    topic_changes: result.topic_changes.slice(0, 3),
+    speaker_changes: [], // brief では省略
   }
 }
 
@@ -43,9 +48,9 @@ function applyStandardFilter(result: CompareOverTimeResult): CompareOverTimeResu
     ...result,
     comparison_summary: {
       ...result.comparison_summary,
-      key_changes:  result.comparison_summary.key_changes.slice(0, 5),
+      key_changes: result.comparison_summary.key_changes.slice(0, 5),
       common_points: result.comparison_summary.common_points.slice(0, 5),
-      new_points:   result.comparison_summary.new_points.slice(0, 5),
+      new_points: result.comparison_summary.new_points.slice(0, 5),
     },
     topic_changes: result.topic_changes.slice(0, 6),
   }
@@ -136,10 +141,10 @@ export function formatCompareResultAsMarkdown(result: CompareOverTimeResult): st
     lines.push('■ 出典', '')
     for (const src of allSources) {
       const parts: string[] = []
-      if (src.speaker)       parts.push(src.speaker)
+      if (src.speaker) parts.push(src.speaker)
       if (src.nameOfMeeting) parts.push(src.nameOfMeeting)
-      if (src.date)          parts.push(src.date)
-      if (src.speechID)      parts.push(`speechID: ${src.speechID}`)
+      if (src.date) parts.push(src.date)
+      if (src.speechID) parts.push(`speechID: ${src.speechID}`)
       lines.push(`- ${parts.join(' / ')}`)
     }
   }
@@ -154,8 +159,22 @@ export function formatCompareResultAsMarkdown(result: CompareOverTimeResult): st
 /** 結果の全 sources を重複除去してフラット化する */
 function collectAllSources(result: CompareOverTimeResult) {
   const seen = new Set<string>()
-  const all: Array<{ speechID: string; issueID?: string; speaker?: string; nameOfMeeting?: string; date?: string; excerpt?: string }> = []
-  const push = (src: { speechID: string; issueID?: string; speaker?: string; nameOfMeeting?: string; date?: string; excerpt?: string }) => {
+  const all: Array<{
+    speechID: string
+    issueID?: string
+    speaker?: string
+    nameOfMeeting?: string
+    date?: string
+    excerpt?: string
+  }> = []
+  const push = (src: {
+    speechID: string
+    issueID?: string
+    speaker?: string
+    nameOfMeeting?: string
+    date?: string
+    excerpt?: string
+  }) => {
     if (!seen.has(src.speechID)) {
       seen.add(src.speechID)
       all.push(src)
@@ -184,9 +203,7 @@ export function getImbalancedPeriods(
   const maxCount = Math.max(...counts)
   const minCount = Math.min(...counts)
   if (minCount === 0 || maxCount / minCount >= 3) {
-    return periodSummaries
-      .filter((ps) => ps.itemCount < maxCount / 3)
-      .map((ps) => ps.label)
+    return periodSummaries.filter((ps) => ps.itemCount < maxCount / 3).map((ps) => ps.label)
   }
   return []
 }
@@ -197,9 +214,9 @@ export function groupTopicChangesByType(
 ): Record<TopicChange['change_type'], TopicChange[]> {
   return {
     continued: topicChanges.filter((tc) => tc.change_type === 'continued'),
-    expanded:  topicChanges.filter((tc) => tc.change_type === 'expanded'),
-    reduced:   topicChanges.filter((tc) => tc.change_type === 'reduced'),
-    new:       topicChanges.filter((tc) => tc.change_type === 'new'),
-    shifted:   topicChanges.filter((tc) => tc.change_type === 'shifted'),
+    expanded: topicChanges.filter((tc) => tc.change_type === 'expanded'),
+    reduced: topicChanges.filter((tc) => tc.change_type === 'reduced'),
+    new: topicChanges.filter((tc) => tc.change_type === 'new'),
+    shifted: topicChanges.filter((tc) => tc.change_type === 'shifted'),
   }
 }
